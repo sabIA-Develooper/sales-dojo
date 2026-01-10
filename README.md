@@ -124,14 +124,36 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 
 ### 3. Rode com Docker (Recomendado)
 
+#### Opção 1: Helper Scripts (Mais Fácil)
+
+```bash
+# Start development environment
+./scripts/dev-up.sh
+
+# View logs
+./scripts/logs.sh
+
+# Stop environment
+./scripts/dev-down.sh
+```
+
+#### Opção 2: Docker Compose Manual
+
 ```bash
 docker-compose up --build
 ```
 
 Serviços disponíveis:
-- **Backend**: http://localhost:8000
-- **Frontend**: http://localhost:3000
-- **API Docs**: http://localhost:8000/docs
+- **Application**: http://localhost (Nginx reverse proxy)
+- **Backend API**: http://localhost/api/v1
+- **API Docs**: http://localhost/docs
+
+**Arquitetura:**
+- 🔵 **Nginx** (port 80) - Reverse proxy + rate limiting
+- 🟢 **Backend** (internal) - FastAPI com hot reload
+- 🟡 **Frontend** (internal) - Next.js com hot reload
+
+📖 **Documentação completa**: [docs/DOCKER.md](docs/DOCKER.md)
 
 ### 4. Rode Manualmente (Alternativa)
 
@@ -335,6 +357,13 @@ git push origin feature/nova-funcionalidade
 - `refactor:` Refatoração de código
 - `test:` Testes
 - `chore:` Tarefas gerais (build, configs, etc)
+
+## 📚 Documentação
+
+- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Arquitetura completa do sistema
+- **[API.md](docs/API.md)** - Documentação de todos os endpoints
+- **[DOCKER.md](docs/DOCKER.md)** - Guia completo de Docker (dev + prod)
+- **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Deploy em produção (Railway + Vercel)
 
 ## 📄 Licença
 

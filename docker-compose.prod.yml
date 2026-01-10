@@ -1,7 +1,7 @@
 # ============================================
-# Docker Compose - Development Environment
+# Docker Compose - Production Environment
 # ============================================
-# Usage: docker-compose up
+# Usage: docker-compose -f docker-compose.prod.yml up -d
 # ============================================
 
 version: '3.8'
@@ -14,24 +14,20 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      target: development
-    container_name: sales-dojo-backend-dev
+      target: production
+    container_name: sales-dojo-backend-prod
     volumes:
-      # Mount source code for hot reload
-      - ./backend:/app
-      # Persist uploaded files
+      # Persist uploaded files only
       - backend_uploads:/tmp/uploads
-      # Exclude __pycache__
-      - /app/__pycache__
     env_file:
       - ./backend/.env
     environment:
       - PYTHONUNBUFFERED=1
-      - ENVIRONMENT=development
-      - DEBUG=true
+      - ENVIRONMENT=production
+      - DEBUG=false
     networks:
       - sales-dojo-network
-    restart: unless-stopped
+    restart: always
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -41,6 +37,21 @@ services:
     # Don't expose ports directly - use nginx
     expose:
       - "8000"
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ==========================================
   # Frontend Service (Next.js)
@@ -49,28 +60,38 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      target: development
-    container_name: sales-dojo-frontend-dev
-    volumes:
-      # Mount source code for hot reload
-      - ./frontend:/app
-      # Persist node_modules and .next
-      - frontend_node_modules:/app/node_modules
-      - frontend_next:/app/.next
-    env_file:
-      - ./frontend/.env.local
+      target: production
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    container_name: sales-dojo-frontend-prod
     environment:
-      - NODE_ENV=development
-      - WATCHPACK_POLLING=true
+      - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
     networks:
       - sales-dojo-network
     depends_on:
       - backend
-    restart: unless-stopped
+    restart: always
     # Don't expose ports directly - use nginx
     expose:
       - "3000"
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ==========================================
   # Nginx Reverse Proxy
@@ -79,15 +100,17 @@ services:
     build:
       context: ./nginx
       dockerfile: Dockerfile
-    container_name: sales-dojo-nginx
+    container_name: sales-dojo-nginx-prod
     ports:
-      # Main entry point
+      # HTTP
       - "80:80"
-      # HTTPS (if configured)
+      # HTTPS (configure SSL certificates first)
       - "443:443"
     volumes:
-      # Mount nginx config for live updates
+      # Mount nginx config (read-only)
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # SSL certificates (uncomment when ready)
+      # - ./nginx/ssl:/etc/nginx/ssl:ro
       # Logs
       - nginx_logs:/var/log/nginx
     networks:
@@ -95,23 +118,34 @@ services:
     depends_on:
       - backend
       - frontend
-    restart: unless-stopped
+    restart: always
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
       interval: 30s
       timeout: 3s
       retries: 3
       start_period: 5s
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 # ==========================================
 # Volumes
 # ==========================================
 volumes:
   backend_uploads:
-    driver: local
-  frontend_node_modules:
-    driver: local
-  frontend_next:
     driver: local
   nginx_logs:
     driver: local
@@ -122,4 +156,4 @@ volumes:
 networks:
   sales-dojo-network:
     driver: bridge
-    name: sales-dojo-network
+    name: sales-dojo-network-prod

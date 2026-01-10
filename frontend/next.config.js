@@ -3,6 +3,9 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
 
+  // Output standalone for Docker production builds
+  output: 'standalone',
+
   // API rewrites for development
   async rewrites() {
     return [
