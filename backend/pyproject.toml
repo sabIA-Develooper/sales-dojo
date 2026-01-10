@@ -1,0 +1,53 @@
+[tool.poetry]
+name = "sales-ai-dojo-backend"
+version = "1.0.0"
+description = "Backend API para plataforma de treinamento de vendas com IA"
+authors = ["Sales AI Dojo Team"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.109.0"
+uvicorn = {extras = ["standard"], version = "^0.27.0"}
+pydantic = "^2.5.3"
+pydantic-settings = "^2.1.0"
+supabase = "^2.3.0"
+openai = "^1.10.0"
+httpx = "^0.26.0"
+PyPDF2 = "^3.0.1"
+python-docx = "^1.1.0"
+openpyxl = "^3.1.2"
+beautifulsoup4 = "^4.12.3"
+requests = "^2.31.0"
+pyjwt = "^2.8.0"
+python-multipart = "^0.0.6"
+email-validator = "^2.1.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.4"
+pytest-asyncio = "^0.23.3"
+black = "^24.1.1"
+flake8 = "^7.0.0"
+mypy = "^1.8.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+include = '\.pyi?$'
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
