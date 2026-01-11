@@ -1,12 +1,14 @@
 """
-Serviço para gerar e armazenar embeddings no Supabase.
+Serviço para gerar e armazenar embeddings com SQLAlchemy.
 """
 
-from supabase import Client
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Dict, Any
 import logging
 from uuid import UUID
 from app.services.openai_service import OpenAIService
+from app.db.models import KnowledgeBaseEntry
+from sqlalchemy import select, func, delete
 
 logger = logging.getLogger(__name__)
 
@@ -14,21 +16,21 @@ logger = logging.getLogger(__name__)
 class EmbeddingService:
     """Gerencia geração e armazenamento de embeddings."""
 
-    def __init__(self, supabase_client: Client, openai_service: OpenAIService):
+    def __init__(self, db: AsyncSession, openai_service: OpenAIService):
         """
         Inicializa serviço de embeddings.
 
         Args:
-            supabase_client: Cliente Supabase
+            db: Sessão do banco de dados SQLAlchemy
             openai_service: Serviço OpenAI para gerar embeddings
         """
-        self.supabase = supabase_client
+        self.db = db
         self.openai = openai_service
 
     async def process_and_store_chunks(
         self,
         chunks: List[Dict[str, Any]],
-        company_id: str,
+        company_id: UUID,
         source_type: str = "document"
     ) -> int:
         """
@@ -55,42 +57,44 @@ class EmbeddingService:
             # Extrai textos dos chunks
             texts = [chunk["content"] for chunk in chunks]
 
-            # Gera embeddings em batch (mais eficiente)
+            # Gera embeddings em batch (mais eficiente ou mock se API não configurada)
             embeddings = await self.openai.generate_embeddings_batch(texts)
 
-            # Prepara registros para inserção
-            records = []
+            # Cria registros ORM para inserção em batch
+            kb_entries = []
             for chunk, embedding in zip(chunks, embeddings):
                 metadata = chunk.get("metadata", {})
 
-                record = {
-                    "company_id": company_id,
-                    "content": chunk["content"],
-                    "source_type": source_type,
-                    "source_name": metadata.get("source_file", "unknown"),
-                    "embedding": embedding
-                }
-                records.append(record)
+                entry = KnowledgeBaseEntry(
+                    company_id=company_id,
+                    content=chunk["content"],
+                    source_type=source_type,
+                    source_name=metadata.get("source_file", "unknown"),
+                    embedding=embedding
+                )
+                kb_entries.append(entry)
 
-            # Insere em batch no Supabase
-            result = self.supabase.table("knowledge_base").insert(records).execute()
+            # Adiciona em batch e faz commit
+            self.db.add_all(kb_entries)
+            await self.db.commit()
 
-            inserted_count = len(result.data) if result.data else 0
+            inserted_count = len(kb_entries)
             logger.info(f"Successfully stored {inserted_count} embeddings")
 
             return inserted_count
 
         except Exception as e:
+            await self.db.rollback()
             logger.error(f"Failed to process and store embeddings: {e}")
             raise
 
     async def add_single_entry(
         self,
         content: str,
-        company_id: str,
+        company_id: UUID,
         source_type: str,
         source_name: str
-    ) -> Dict[str, Any]:
+    ) -> KnowledgeBaseEntry:
         """
         Adiciona uma única entrada à knowledge base.
 
@@ -104,28 +108,31 @@ class EmbeddingService:
             Registro criado
         """
         try:
-            # Gera embedding
+            # Gera embedding (real ou mock)
             embedding = await self.openai.generate_embedding(content)
 
-            # Insere no banco
-            record = {
-                "company_id": company_id,
-                "content": content,
-                "source_type": source_type,
-                "source_name": source_name,
-                "embedding": embedding
-            }
+            # Cria nova entrada
+            entry = KnowledgeBaseEntry(
+                company_id=company_id,
+                content=content,
+                source_type=source_type,
+                source_name=source_name,
+                embedding=embedding
+            )
 
-            result = self.supabase.table("knowledge_base").insert(record).execute()
+            self.db.add(entry)
+            await self.db.commit()
+            await self.db.refresh(entry)
 
             logger.info(f"Added single KB entry for company {company_id}")
-            return result.data[0] if result.data else {}
+            return entry
 
         except Exception as e:
+            await self.db.rollback()
             logger.error(f"Failed to add KB entry: {e}")
             raise
 
-    async def update_embedding(self, entry_id: str, new_content: str) -> Dict[str, Any]:
+    async def update_embedding(self, entry_id: UUID, new_content: str) -> KnowledgeBaseEntry:
         """
         Atualiza conteúdo e embedding de uma entrada existente.
 
@@ -137,25 +144,36 @@ class EmbeddingService:
             Registro atualizado
         """
         try:
+            # Busca a entrada
+            result = await self.db.execute(
+                select(KnowledgeBaseEntry).where(KnowledgeBaseEntry.id == entry_id)
+            )
+            entry = result.scalar_one_or_none()
+
+            if not entry:
+                raise ValueError(f"KB entry {entry_id} not found")
+
             # Gera novo embedding
             new_embedding = await self.openai.generate_embedding(new_content)
 
-            # Atualiza no banco
-            result = self.supabase.table("knowledge_base").update({
-                "content": new_content,
-                "embedding": new_embedding
-            }).eq("id", entry_id).execute()
+            # Atualiza
+            entry.content = new_content
+            entry.embedding = new_embedding
+
+            await self.db.commit()
+            await self.db.refresh(entry)
 
             logger.info(f"Updated KB entry {entry_id}")
-            return result.data[0] if result.data else {}
+            return entry
 
         except Exception as e:
+            await self.db.rollback()
             logger.error(f"Failed to update KB entry: {e}")
             raise
 
     async def delete_entries_by_source(
         self,
-        company_id: str,
+        company_id: UUID,
         source_name: str
     ) -> int:
         """
@@ -169,22 +187,26 @@ class EmbeddingService:
             Número de entradas removidas
         """
         try:
-            result = self.supabase.table("knowledge_base").delete().eq(
-                "company_id", company_id
-            ).eq(
-                "source_name", source_name
-            ).execute()
+            result = await self.db.execute(
+                delete(KnowledgeBaseEntry).where(
+                    KnowledgeBaseEntry.company_id == company_id,
+                    KnowledgeBaseEntry.source_name == source_name
+                ).returning(KnowledgeBaseEntry.id)
+            )
 
-            deleted_count = len(result.data) if result.data else 0
+            await self.db.commit()
+
+            deleted_count = len(result.all())
             logger.info(f"Deleted {deleted_count} entries from source '{source_name}'")
 
             return deleted_count
 
         except Exception as e:
+            await self.db.rollback()
             logger.error(f"Failed to delete KB entries: {e}")
             raise
 
-    async def get_company_kb_stats(self, company_id: str) -> Dict[str, Any]:
+    async def get_company_kb_stats(self, company_id: UUID) -> Dict[str, Any]:
         """
         Obtém estatísticas da knowledge base de uma empresa.
 
@@ -196,26 +218,31 @@ class EmbeddingService:
         """
         try:
             # Conta total de entradas
-            result = self.supabase.table("knowledge_base").select(
-                "id, source_type, source_name", count="exact"
-            ).eq("company_id", company_id).execute()
+            count_result = await self.db.execute(
+                select(func.count()).select_from(KnowledgeBaseEntry).where(
+                    KnowledgeBaseEntry.company_id == company_id
+                )
+            )
+            total_entries = count_result.scalar()
 
-            total_entries = result.count if hasattr(result, 'count') else len(result.data)
+            # Busca todas as entradas para análise
+            result = await self.db.execute(
+                select(KnowledgeBaseEntry.source_type, KnowledgeBaseEntry.source_name).where(
+                    KnowledgeBaseEntry.company_id == company_id
+                )
+            )
+            entries = result.all()
 
             # Agrupa por tipo de fonte
             sources_by_type = {}
             unique_sources = set()
 
-            if result.data:
-                for entry in result.data:
-                    source_type = entry.get("source_type", "unknown")
-                    source_name = entry.get("source_name", "unknown")
-
-                    sources_by_type[source_type] = sources_by_type.get(source_type, 0) + 1
-                    unique_sources.add(source_name)
+            for source_type, source_name in entries:
+                sources_by_type[source_type] = sources_by_type.get(source_type, 0) + 1
+                unique_sources.add(source_name)
 
             stats = {
-                "company_id": company_id,
+                "company_id": str(company_id),
                 "total_entries": total_entries,
                 "unique_sources": len(unique_sources),
                 "entries_by_type": sources_by_type,

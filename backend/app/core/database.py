@@ -1,119 +1,135 @@
 """
-Cliente Supabase e funções de inicialização do banco de dados.
+Configuração do banco de dados PostgreSQL com SQLAlchemy.
 """
 
-from supabase import create_client, Client
+from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from app.core.config import settings
-from typing import Optional
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-class SupabaseClient:
-    """Singleton para gerenciar conexão com Supabase."""
-
-    _instance: Optional[Client] = None
-
-    @classmethod
-    def get_client(cls) -> Client:
-        """
-        Retorna instância única do cliente Supabase.
-        Cria a conexão apenas uma vez (lazy initialization).
-        """
-        if cls._instance is None:
-            try:
-                cls._instance = create_client(
-                    supabase_url=settings.SUPABASE_URL,
-                    supabase_key=settings.SUPABASE_KEY
-                )
-                logger.info("✅ Supabase client initialized successfully")
-            except Exception as e:
-                logger.error(f"❌ Failed to initialize Supabase client: {e}")
-                raise
-
-        return cls._instance
-
-    @classmethod
-    def close(cls) -> None:
-        """Fecha a conexão (se necessário no futuro)."""
-        cls._instance = None
+# Base class para models SQLAlchemy
+class Base(DeclarativeBase):
+    """Base class para todos os models."""
+    pass
 
 
-def get_supabase() -> Client:
+# Create async engine
+async_engine = create_async_engine(
+    settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
+    echo=settings.DATABASE_ECHO,
+    future=True,
+    pool_pre_ping=True,  # Verifica conexão antes de usar
+)
+
+# Create sync engine (para migrations e ops síncronas)
+sync_engine = create_engine(
+    settings.DATABASE_URL,
+    echo=settings.DATABASE_ECHO,
+    future=True,
+    pool_pre_ping=True,
+)
+
+# Session factories
+AsyncSessionLocal = async_sessionmaker(
+    async_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False,
+)
+
+SessionLocal = sessionmaker(
+    sync_engine,
+    autocommit=False,
+    autoflush=False,
+)
+
+
+async def get_db() -> AsyncSession:
     """
-    Dependency injection para FastAPI.
-    Uso: def endpoint(db: Client = Depends(get_supabase))
+    Dependency para obter sessão async do banco.
+
+    Usage em FastAPI:
+        @app.get("/items")
+        async def read_items(db: AsyncSession = Depends(get_db)):
+            ...
     """
-    return SupabaseClient.get_client()
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+
+
+def get_sync_db():
+    """
+    Dependency para obter sessão síncrona (migrations, scripts).
+    """
+    db = SessionLocal()
+    try:
+        yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
 
 
 async def init_database() -> None:
     """
-    Inicializa o banco de dados criando tabelas se não existirem.
-    Chamada no startup da aplicação.
-    """
-    client = get_supabase()
+    Inicializa o banco de dados.
 
-    # SQL para criar extensão pgvector se não existir
-    vector_extension_sql = """
-    CREATE EXTENSION IF NOT EXISTS vector;
-    """
+    - Verifica conexão
+    - Extensões (pgvector, uuid-ossp) são criadas via init.sql
 
-    # SQL para criar função de busca vetorial
-    vector_search_function_sql = """
-    CREATE OR REPLACE FUNCTION match_documents(
-        query_embedding vector(1536),
-        match_threshold float,
-        match_count int,
-        company_id uuid
-    )
-    RETURNS TABLE (
-        id uuid,
-        content text,
-        source_type text,
-        source_name text,
-        similarity float
-    )
-    LANGUAGE sql STABLE
-    AS $$
-        SELECT
-            knowledge_base.id,
-            knowledge_base.content,
-            knowledge_base.source_type,
-            knowledge_base.source_name,
-            1 - (knowledge_base.embedding <=> query_embedding) as similarity
-        FROM knowledge_base
-        WHERE knowledge_base.company_id = match_documents.company_id
-            AND 1 - (knowledge_base.embedding <=> query_embedding) > match_threshold
-        ORDER BY similarity DESC
-        LIMIT match_count;
-    $$;
+    Note: Tabelas são criadas via Alembic migrations, não aqui.
     """
-
     try:
-        # Note: Supabase geralmente já tem pgvector habilitado
-        # Essas queries SQL podem ser executadas via Supabase Dashboard SQL Editor
-        logger.info("✅ Database initialization completed")
-        logger.info("⚠️  Execute as seguintes queries no Supabase SQL Editor se ainda não fez:")
-        logger.info(vector_extension_sql)
-        logger.info(vector_search_function_sql)
+        async with async_engine.begin() as conn:
+            # Verifica se consegue conectar
+            result = await conn.execute("SELECT 1")
+
+        logger.info("✅ Database connection successful")
+        logger.info(f"📊 Database: {settings.DATABASE_URL.split('@')[1]}")  # Não loga senha
 
     except Exception as e:
-        logger.error(f"❌ Database initialization error: {e}")
+        logger.error(f"❌ Database connection failed: {e}")
         raise
 
 
-def verify_connection() -> bool:
+async def verify_connection() -> bool:
     """
-    Verifica se a conexão com Supabase está funcionando.
+    Verifica se a conexão com o banco está funcionando.
     Útil para health checks.
+
+    Returns:
+        True se conectado, False caso contrário
     """
     try:
-        client = get_supabase()
-        # Tenta fazer uma query simples
-        result = client.table("companies").select("id").limit(1).execute()
+        async with async_engine.begin() as conn:
+            await conn.execute("SELECT 1")
         return True
     except Exception as e:
-        logger.error(f"❌ Database connection failed: {e}")
+        logger.error(f"Database connection check failed: {e}")
         return False
+
+
+async def close_database() -> None:
+    """
+    Fecha conexões do banco.
+    Chamado no shutdown da aplicação.
+    """
+    try:
+        await async_engine.dispose()
+        logger.info("Database connections closed")
+    except Exception as e:
+        logger.error(f"Error closing database: {e}")

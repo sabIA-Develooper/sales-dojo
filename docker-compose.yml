@@ -8,6 +8,31 @@ version: '3.8'
 
 services:
   # ==========================================
+  # PostgreSQL Database with pgvector
+  # ==========================================
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: sales-dojo-postgres
+    environment:
+      - POSTGRES_DB=sales_dojo
+      - POSTGRES_USER=sales_user
+      - POSTGRES_PASSWORD=sales_password_dev
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - sales-dojo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sales_user -d sales_dojo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ==========================================
   # Backend Service (FastAPI)
   # ==========================================
   backend:
@@ -31,6 +56,9 @@ services:
       - DEBUG=true
     networks:
       - sales-dojo-network
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -107,6 +135,8 @@ services:
 # Volumes
 # ==========================================
 volumes:
+  postgres_data:
+    driver: local
   backend_uploads:
     driver: local
   frontend_node_modules:
