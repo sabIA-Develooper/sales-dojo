@@ -21,7 +21,10 @@ class FeedbackBase(BaseModel):
     )
     detailed_analysis: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Análise detalhada por categorias (rapport, discovery, objection_handling, closing)"
+        description=(
+            "Análise detalhada por categorias "
+            "(rapport, discovery, objection_handling, closing)"
+        )
     )
 
 

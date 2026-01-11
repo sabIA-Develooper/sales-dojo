@@ -105,7 +105,10 @@ async def upload_documents(
                 source_type="document"
             )
 
-            logger.info(f"✅ File processed successfully: {safe_filename}, {stored_count} chunks stored")
+            logger.info(
+                f"✅ File processed successfully: {safe_filename}, "
+                f"{stored_count} chunks stored"
+            )
 
             responses.append(DocumentUploadResponse(
                 file_id=safe_filename,  # Poderia gerar UUID aqui
@@ -256,7 +259,7 @@ async def delete_document(
         logger.info(f"✅ Deleted {deleted_count} entries from document: {source_name}")
 
         return {
-            "message": f"Document removed successfully",
+            "message": "Document removed successfully",
             "source_name": source_name,
             "entries_deleted": deleted_count
         }

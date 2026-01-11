@@ -8,7 +8,7 @@ from supabase import Client
 from app.core.database import get_supabase
 from app.core.config import settings
 import jwt
-from typing import Dict, Optional
+from typing import Dict
 import logging
 
 logger = logging.getLogger(__name__)

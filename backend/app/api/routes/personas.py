@@ -4,7 +4,7 @@ Rotas para gerenciamento de personas de clientes.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from supabase import Client
-from typing import List, Dict
+from typing import List
 from uuid import UUID
 from app.core.database import get_supabase
 from app.core.dependencies import get_current_company_id, verify_manager_role

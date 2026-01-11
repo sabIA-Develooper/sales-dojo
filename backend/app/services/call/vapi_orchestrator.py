@@ -229,8 +229,13 @@ INSTRUÇÕES DE COMPORTAMENTO:
 
         # Mensagens variadas baseadas no role
         greetings = {
-            "decision_maker": f"Olá, aqui é {name}. Vi que vocês entraram em contato. Como posso ajudar?",
-            "influencer": f"Oi, sou {name}. Recebi o contato de vocês. Do que se trata?",
+            "decision_maker": (
+                f"Olá, aqui é {name}. Vi que vocês entraram em contato. "
+                f"Como posso ajudar?"
+            ),
+            "influencer": (
+                f"Oi, sou {name}. Recebi o contato de vocês. Do que se trata?"
+            ),
             "gatekeeper": f"Alô, {name} falando. Quem gostaria?",
             "user": f"Oi! Sou {name}. Tudo bem?"
         }

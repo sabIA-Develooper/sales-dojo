@@ -16,8 +16,6 @@ from app.models.training_session import (
     SessionStatsResponse
 )
 from app.services.call.vapi_orchestrator import VapiOrchestratorService
-from app.services.call.rag_service import RAGService
-from app.services.openai_service import OpenAIService
 import logging
 import random
 
