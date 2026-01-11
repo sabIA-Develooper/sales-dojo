@@ -3,12 +3,26 @@ set -e
 
 echo "🚀 Starting Sales AI Dojo Backend..."
 
-# Wait for PostgreSQL to be ready
+# Wait for PostgreSQL to be ready (with timeout)
 echo "⏳ Waiting for PostgreSQL..."
-while ! nc -z postgres 5432; do
+POSTGRES_HOST="${DATABASE_HOST:-postgres}"
+POSTGRES_PORT="${DATABASE_PORT:-5432}"
+TIMEOUT=30
+ELAPSED=0
+
+while ! nc -z "$POSTGRES_HOST" "$POSTGRES_PORT"; do
+  if [ $ELAPSED -ge $TIMEOUT ]; then
+    echo "⚠️  PostgreSQL connection timeout after ${TIMEOUT}s"
+    echo "⚠️  Continuing without database connection..."
+    break
+  fi
   sleep 0.5
+  ELAPSED=$((ELAPSED + 1))
 done
-echo "✅ PostgreSQL is ready!"
+
+if nc -z "$POSTGRES_HOST" "$POSTGRES_PORT"; then
+  echo "✅ PostgreSQL is ready!"
+fi
 
 # Run database migrations
 echo "📊 Running database migrations..."

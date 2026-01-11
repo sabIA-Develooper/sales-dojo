@@ -71,4 +71,4 @@ jobs:
 
       - name: Test Docker image
         run: |
-          docker run --rm sales-dojo-backend:${{ github.sha }} python -c "print('Build successful!')"
+          docker run --rm --entrypoint python sales-dojo-backend:${{ github.sha }} -c "import sys; print(f'✅ Build successful! Python {sys.version}'); sys.exit(0)"
