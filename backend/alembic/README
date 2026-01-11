@@ -1,0 +1,52 @@
+# Alembic Database Migrations
+
+This directory contains database migration scripts for Sales AI Dojo.
+
+## Common Commands
+
+### Create a new migration (auto-generate from models)
+```bash
+# From backend/ directory
+alembic revision --autogenerate -m "description of changes"
+```
+
+### Apply migrations
+```bash
+# Upgrade to latest
+alembic upgrade head
+
+# Upgrade one version
+alembic upgrade +1
+
+# Downgrade one version
+alembic downgrade -1
+```
+
+### View migration history
+```bash
+# Current version
+alembic current
+
+# History
+alembic history
+
+# Show SQL that would be executed (without running)
+alembic upgrade head --sql
+```
+
+## Docker Usage
+
+```bash
+# Run migrations inside Docker container
+docker-compose exec backend alembic upgrade head
+
+# Create new migration in Docker
+docker-compose exec backend alembic revision --autogenerate -m "your message"
+```
+
+## Important Notes
+
+- Always review auto-generated migrations before applying them
+- Test migrations on a development database first
+- Migrations are applied automatically on container startup (see docker-entrypoint.sh)
+- The database URL is read from environment variables via app.core.config
