@@ -2,7 +2,7 @@
 Configuração do banco de dados PostgreSQL com SQLAlchemy.
 """
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from app.core.config import settings
@@ -96,7 +96,7 @@ async def init_database() -> None:
     try:
         async with async_engine.begin() as conn:
             # Verifica se consegue conectar
-            result = await conn.execute("SELECT 1")
+            await conn.execute(text("SELECT 1"))
 
         logger.info("✅ Database connection successful")
         logger.info(f"📊 Database: {settings.DATABASE_URL.split('@')[1]}")  # Não loga senha

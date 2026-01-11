@@ -120,7 +120,11 @@ class OpenAIService:
             logger.error(f"Failed to generate batch embeddings: {e}")
             raise
 
-    def _generate_mock_response(self, messages: List[Dict[str, str]], response_format: Optional[Dict[str, str]] = None) -> str:
+    def _generate_mock_response(
+        self,
+        messages: List[Dict[str, str]],
+        response_format: Optional[Dict[str, str]] = None
+    ) -> str:
         """Gera resposta mock baseada no contexto."""
         # Se espera JSON, retorna JSON mock
         if response_format and response_format.get("type") == "json_object":
@@ -349,7 +353,10 @@ Retorne JSON no formato:
                     "[MOCK] Implementação complexa",
                     "[MOCK] Já temos solução atual"
                 ],
-                "background": f"[MOCK] Profissional com {random.randint(5, 15)} anos de experiência em {random.choice(['TI', 'Vendas', 'Operações', 'Finanças'])}",
+                "background": (
+                    f"[MOCK] Profissional com {random.randint(5, 15)} anos de "
+                    f"experiência em {random.choice(['TI', 'Vendas', 'Operações', 'Finanças'])}"
+                ),
                 "_mock_mode": True
             }
             mock_personas.append(persona)

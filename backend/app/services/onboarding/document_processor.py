@@ -5,7 +5,7 @@ Suporta PDF, DOCX, TXT, CSV, XLSX.
 
 import io
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 import logging
 
 logger = logging.getLogger(__name__)

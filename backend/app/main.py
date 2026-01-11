@@ -159,13 +159,41 @@ async def root():
 
 
 # Register API routers (uncomment quando criar as rotas)
-# app.include_router(auth.router, prefix=f"{settings.API_V1_PREFIX}/auth", tags=["Authentication"])
-# app.include_router(companies.router, prefix=f"{settings.API_V1_PREFIX}/companies", tags=["Companies"])
-# app.include_router(onboarding.router, prefix=f"{settings.API_V1_PREFIX}/onboarding", tags=["Onboarding"])
-# app.include_router(personas.router, prefix=f"{settings.API_V1_PREFIX}/personas", tags=["Personas"])
-# app.include_router(sessions.router, prefix=f"{settings.API_V1_PREFIX}/sessions", tags=["Training Sessions"])
-# app.include_router(feedback.router, prefix=f"{settings.API_V1_PREFIX}/feedback", tags=["Feedback"])
-# app.include_router(dashboard.router, prefix=f"{settings.API_V1_PREFIX}/dashboard", tags=["Dashboard"])
+# app.include_router(
+#     auth.router,
+#     prefix=f"{settings.API_V1_PREFIX}/auth",
+#     tags=["Authentication"]
+# )
+# app.include_router(
+#     companies.router,
+#     prefix=f"{settings.API_V1_PREFIX}/companies",
+#     tags=["Companies"]
+# )
+# app.include_router(
+#     onboarding.router,
+#     prefix=f"{settings.API_V1_PREFIX}/onboarding",
+#     tags=["Onboarding"]
+# )
+# app.include_router(
+#     personas.router,
+#     prefix=f"{settings.API_V1_PREFIX}/personas",
+#     tags=["Personas"]
+# )
+# app.include_router(
+#     sessions.router,
+#     prefix=f"{settings.API_V1_PREFIX}/sessions",
+#     tags=["Training Sessions"]
+# )
+# app.include_router(
+#     feedback.router,
+#     prefix=f"{settings.API_V1_PREFIX}/feedback",
+#     tags=["Feedback"]
+# )
+# app.include_router(
+#     dashboard.router,
+#     prefix=f"{settings.API_V1_PREFIX}/dashboard",
+#     tags=["Dashboard"]
+# )
 
 # Webhooks
 # app.include_router(vapi.router, prefix="/webhooks/vapi", tags=["Webhooks"])
