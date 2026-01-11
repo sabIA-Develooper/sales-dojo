@@ -8,21 +8,26 @@ pydantic==2.5.3
 pydantic-settings==2.1.0
 email-validator==2.1.0
 
-# Database
-supabase==2.3.0
-postgrest==0.13.1
+# Database - PostgreSQL with SQLAlchemy
+sqlalchemy==2.0.25
+alembic==1.13.1
+psycopg2-binary==2.9.9
+asyncpg==0.29.0
+pgvector==0.2.4
 
-# OpenAI and AI services
-openai==1.10.0
+# OpenAI and AI services (OPTIONAL - will work without these)
+# Uncomment when you have API keys:
+# openai==1.10.0
 httpx==0.26.0
 
-# Document processing
-PyPDF2==3.0.1
-python-docx==1.1.0
-openpyxl==3.1.2
+# Document processing (OPTIONAL)
+# Uncomment when needed:
+# PyPDF2==3.0.1
+# python-docx==1.1.0
+# openpyxl==3.1.2
 
-# Web scraping (for future implementation)
-beautifulsoup4==4.12.3
+# Web scraping (OPTIONAL)
+# beautifulsoup4==4.12.3
 requests==2.31.0
 
 # Authentication
@@ -36,7 +41,6 @@ python-dateutil==2.8.2
 # Development
 pytest==7.4.4
 pytest-asyncio==0.23.3
-httpx==0.26.0
 
 # Logging and monitoring
 python-json-logger==2.0.7
