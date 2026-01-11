@@ -276,8 +276,9 @@ class OpenAIService:
             return self._generate_mock_analysis(transcript)
 
         # Modo real: usa OpenAI API
-        system_prompt = """Você é um especialista em análise de vendas. Analise a transcrição fornecida e
-gere um feedback estruturado para ajudar o vendedor a melhorar.
+        system_prompt = """Você é um especialista em análise de vendas.
+Analise a transcrição fornecida e gere um feedback estruturado para
+ajudar o vendedor a melhorar.
 
 Avalie as seguintes categorias (0-100 para cada):
 1. Rapport: Construção de relacionamento e conexão

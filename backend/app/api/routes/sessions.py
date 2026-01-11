@@ -69,7 +69,13 @@ async def start_training_session(
             persona_id = random_persona["id"]
 
         # Busca dados completos da persona
-        persona_result = db.table("personas").select("*").eq("id", str(persona_id)).single().execute()
+        persona_result = (
+            db.table("personas")
+            .select("*")
+            .eq("id", str(persona_id))
+            .single()
+            .execute()
+        )
 
         if not persona_result.data:
             raise HTTPException(
